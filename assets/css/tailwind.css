@@ -1,0 +1,12 @@
+/* assets/css/tailwind.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gray-100;
+}
+
+.table {
+  @apply bg-casino-green-800 rounded-lg shadow-lg;
+}

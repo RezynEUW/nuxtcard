@@ -1,0 +1,32 @@
+{
+  "name": "nuxt-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "setup-db": "node -r dotenv/config scripts/setup-db.js",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@nuxt/nitro": "^0.10.0",
+    "@pinia/nuxt": "^0.10.1",
+    "dotenv": "^16.4.7",
+    "gsap": "^3.12.7",
+    "lucide-vue-next": "^0.482.0",
+    "nuxt": "^3.16.0",
+    "pg": "^8.14.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0",
+    "ws": "^8.18.1"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.31",
+    "postcss-import": "^16.1.0",
+    "postcss-nesting": "^13.0.1",
+    "tailwindcss": "^3.3.3"
+  }
+}
