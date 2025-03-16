@@ -27,9 +27,43 @@ export default defineEventHandler(async (event) => {
       [room.room_id]
     );
     
+    // Get current active game if room is active
+    let currentGame = null;
+    if (room.status === 'active') {
+      // Try to get game ID from options first
+      const currentGameId = room.options?.current_game_id;
+      
+      if (currentGameId) {
+        const gameResult = await query(
+          'SELECT * FROM games WHERE game_id = $1',
+          [currentGameId]
+        );
+        
+        if (gameResult.rows.length > 0) {
+          currentGame = gameResult.rows[0];
+        }
+      }
+      
+      // If not found, get the most recent game
+      if (!currentGame) {
+        const gameResult = await query(
+          'SELECT * FROM games WHERE room_id = $1 ORDER BY created_at DESC LIMIT 1',
+          [room.room_id]
+        );
+        
+        if (gameResult.rows.length > 0) {
+          currentGame = gameResult.rows[0];
+        }
+      }
+    }
+    
     return {
-      room,
-      players: playersResult.rows
+      room: {
+        ...room,
+        current_game_id: currentGame?.game_id
+      },
+      players: playersResult.rows,
+      currentGame
     };
   }
 });

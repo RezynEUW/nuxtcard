@@ -1,0 +1,8 @@
+{
+  "version": 3,
+  "sources": ["netlify/functions/hello.js"],
+  "sourceRoot": "C:/Users/admin/AppData/Local/Temp/tmp-1692-SM5Yjj2zYg6z",
+  "sourcesContent": ["// netlify/functions/hello.js\r\nexports.handler = async function(event, context) {\r\n    return {\r\n      statusCode: 200,\r\n      body: JSON.stringify({ message: \"Hello from the function!\" })\r\n    };\r\n  };"],
+  "mappings": ";;;AACA,QAAQ,UAAU,eAAe,OAAO,SAAS;AAC7C,SAAO;AAAA,IACL,YAAY;AAAA,IACZ,MAAM,KAAK,UAAU,EAAE,SAAS,2BAA2B,CAAC;AAAA,EAC9D;AACF;",
+  "names": []
+}

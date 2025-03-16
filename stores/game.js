@@ -32,36 +32,69 @@ export const useGameStore = defineStore('game', {
       this.error = null;
       
       try {
+        console.log(`Initializing game ${gameId}...`);
         const sessionId = localStorage.getItem('sessionId');
+        const playerId = localStorage.getItem('playerId');
         
         // 1. Create a new deck
+        console.log('Creating deck...');
         const deckResult = await apiRequest(`games/${gameId}/deck`, {
           method: 'POST',
           body: { sessionId, deckCount: 6 }
         });
         
         this.deckId = deckResult.deck.deck_id;
+        console.log(`Deck created with ID: ${this.deckId}`);
         
         // 2. Deal initial cards
+        console.log('Dealing cards...');
         const dealResult = await apiRequest(`games/${gameId}/blackjack/deal`, {
           method: 'POST',
           body: { sessionId }
         });
         
+        console.log('Deal result:', dealResult);
+        
+        // Store dealer hand
         this.dealerHand = dealResult.dealerHand;
         
         // Transform playerHands array to object with player_id as key
         const playerHandsMap = {};
-        dealResult.playerHands.forEach(hand => {
-          playerHandsMap[hand.player_id] = hand;
-        });
+        
+        // Ensure playerHands is an array
+        if (Array.isArray(dealResult.playerHands)) {
+          dealResult.playerHands.forEach(hand => {
+            if (hand && hand.player_id) {
+              playerHandsMap[hand.player_id] = hand;
+            }
+          });
+        } else {
+          console.warn('Expected playerHands to be an array but got:', dealResult.playerHands);
+        }
+        
+        console.log('Player hands map:', playerHandsMap);
+        console.log('Current player ID:', playerId);
         
         this.playerHands = playerHandsMap;
         this.currentGame = { game_id: gameId };
         this.status = 'playing';
         
+        // Get current turn from dealResult 
+        this.currentTurn = dealResult.currentTurn;
+        
+        // If dealer doesn't have cards assigned, try to fix
+        if (this.dealerHand && (!this.dealerHand.cards || this.dealerHand.cards.length === 0)) {
+          console.warn('Dealer hand has no cards, this should not happen');
+        }
+        
+        // If player hand doesn't have cards assigned, try to fix
+        if (playerHandsMap[playerId] && (!playerHandsMap[playerId].cards || playerHandsMap[playerId].cards.length === 0)) {
+          console.warn('Player hand has no cards, this should not happen');
+        }
+        
         return dealResult;
       } catch (error) {
+        console.error('Error initializing game:', error);
         this.error = error.message;
         throw error;
       } finally {
@@ -77,10 +110,14 @@ export const useGameStore = defineStore('game', {
         const sessionId = localStorage.getItem('sessionId');
         const playerId = localStorage.getItem('playerId');
         
+        console.log(`Player ${playerId} hitting hand ${handId}`);
+        
         const result = await apiRequest(`games/${this.currentGame.game_id}/hands/${handId}/hit`, {
           method: 'POST',
           body: { sessionId }
         });
+        
+        console.log('Hit result:', result);
         
         // Add the new card to the hand
         if (this.playerHands[playerId]) {
@@ -97,6 +134,7 @@ export const useGameStore = defineStore('game', {
         
         return result;
       } catch (error) {
+        console.error('Error performing hit:', error);
         this.error = error.message;
         throw error;
       } finally {
@@ -112,10 +150,14 @@ export const useGameStore = defineStore('game', {
         const sessionId = localStorage.getItem('sessionId');
         const playerId = localStorage.getItem('playerId');
         
+        console.log(`Player ${playerId} standing on hand ${handId}`);
+        
         const result = await apiRequest(`games/${this.currentGame.game_id}/hands/${handId}/stand`, {
           method: 'POST',
           body: { sessionId }
         });
+        
+        console.log('Stand result:', result);
         
         // Update hand status
         if (this.playerHands[playerId]) {
@@ -124,6 +166,7 @@ export const useGameStore = defineStore('game', {
         
         return result;
       } catch (error) {
+        console.error('Error performing stand:', error);
         this.error = error.message;
         throw error;
       } finally {
@@ -138,19 +181,26 @@ export const useGameStore = defineStore('game', {
       try {
         const sessionId = localStorage.getItem('sessionId');
         
+        console.log('Playing dealer turn');
+        
         const result = await apiRequest(`games/${this.currentGame.game_id}/dealer`, {
           method: 'POST',
           body: { sessionId }
         });
         
+        console.log('Dealer result:', result);
+        
         // Update dealer hand
-        this.dealerHand.cards = result.dealer.dealerCards;
+        if (result.dealer && result.dealer.dealerCards) {
+          this.dealerHand.cards = result.dealer.dealerCards;
+        }
         
         // Update game status
         this.status = 'completed';
         
         return result;
       } catch (error) {
+        console.error('Error in dealer turn:', error);
         this.error = error.message;
         throw error;
       } finally {

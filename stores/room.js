@@ -13,8 +13,9 @@ export const useRoomStore = defineStore('room', {
   
   getters: {
     isHost: (state) => {
-      const sessionId = localStorage.getItem('sessionId');
-      const player = state.players.find(p => p.session_id === sessionId);
+      const playerId = localStorage.getItem('playerId');
+      // Use player_id instead of session_id since we don't return session_id from the API
+      const player = state.players.find(p => p.player_id === playerId);
       return player?.is_host || false;
     },
     

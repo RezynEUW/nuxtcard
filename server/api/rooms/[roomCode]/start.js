@@ -70,12 +70,6 @@ export default defineEventHandler(async (event) => {
       });
     }
     
-    // Update room status
-    await query(
-      'UPDATE rooms SET status = $1, updated_at = NOW() WHERE room_id = $2',
-      ['active', room.room_id]
-    );
-    
     // Create a game
     const gameResult = await query(
       'INSERT INTO games (room_id) VALUES ($1) RETURNING *',
@@ -84,11 +78,16 @@ export default defineEventHandler(async (event) => {
     
     const game = gameResult.rows[0];
     
+    // Update room status and set current_game_id (this was missing!)
+    const updatedRoomResult = await query(
+      'UPDATE rooms SET status = $1, updated_at = NOW(), options = jsonb_set(options, \'{current_game_id}\', $2) WHERE room_id = $3 RETURNING *',
+      ['active', `"${game.game_id}"`, room.room_id]
+    );
+    
+    const updatedRoom = updatedRoomResult.rows[0];
+    
     return {
-      room: {
-        ...room,
-        status: 'active'
-      },
+      room: updatedRoom,
       game
     };
   }

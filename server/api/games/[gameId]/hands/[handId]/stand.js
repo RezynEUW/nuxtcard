@@ -1,5 +1,4 @@
 // server/api/games/[gameId]/hands/[handId]/stand.js
-import { getCardService } from '../../../../../services/card-service';
 import { query } from '../../../../../db';
 
 export default defineEventHandler(async (event) => {
@@ -7,12 +6,15 @@ export default defineEventHandler(async (event) => {
   const gameId = getRouterParam(event, 'gameId');
   const handId = getRouterParam(event, 'handId');
   
+  console.log(`[stand] Processing stand request for hand ${handId} in game ${gameId}`);
+  
   // POST /api/games/:gameId/hands/:handId/stand - Stand (end turn)
   if (method === 'POST') {
     const body = await readBody(event);
     const { sessionId } = body;
     
     if (!sessionId) {
+      console.log(`[stand] No sessionId provided`);
       throw createError({
         statusCode: 401,
         message: 'Unauthorized'
@@ -30,6 +32,7 @@ export default defineEventHandler(async (event) => {
     );
     
     if (handResult.rows.length === 0) {
+      console.log(`[stand] Hand not found: ${handId}`);
       throw createError({
         statusCode: 404,
         message: 'Hand not found'
@@ -40,29 +43,67 @@ export default defineEventHandler(async (event) => {
     
     // Verify it's the player's turn and they own the hand
     if (hand.current_turn !== hand.player_id || hand.session_id !== sessionId) {
+      console.log(`[stand] Not player's turn or not their hand. Current turn: ${hand.current_turn}, Player: ${hand.player_id}`);
       throw createError({
         statusCode: 403,
         message: 'Not your turn or not your hand'
       });
     }
     
-    // Update hand status to stand
-    await query(
-      'UPDATE hands SET status = $1 WHERE hand_id = $2',
-      ['stand', handId]
-    );
-    
-    // Find next player's turn
-    // For now, we'll just return success
-    // In a real implementation, you'd move to the next player or dealer's turn
-    
-    return {
-      success: true,
-      message: 'Player stands',
-      hand: {
-        ...hand,
-        status: 'stand'
+    try {
+      // Update hand status to stand
+      await query(
+        'UPDATE hands SET status = $1 WHERE hand_id = $2',
+        ['stand', handId]
+      );
+      
+      console.log(`[stand] Player ${hand.player_id} stands`);
+      
+      // Find the next player's turn
+      // This is simplified - in a full implementation, you would check for other active hands
+      const nextPlayerResult = await query(
+        `SELECT p.player_id FROM players p
+         JOIN hands h ON p.player_id = h.player_id
+         WHERE h.game_id = $1 AND h.status = 'active' AND p.player_id != $2
+         ORDER BY p.created_at
+         LIMIT 1`,
+        [gameId, hand.player_id]
+      );
+      
+      let lastPlayer = false;
+      
+      if (nextPlayerResult.rows.length > 0) {
+        const nextPlayerId = nextPlayerResult.rows[0].player_id;
+        await query(
+          'UPDATE games SET current_turn = $1 WHERE game_id = $2',
+          [nextPlayerId, gameId]
+        );
+        console.log(`[stand] Next turn: ${nextPlayerId}`);
+      } else {
+        // All players have played, dealer's turn
+        await query(
+          'UPDATE games SET current_turn = NULL WHERE game_id = $1',
+          [gameId]
+        );
+        lastPlayer = true;
+        console.log(`[stand] All players done, dealer's turn next`);
       }
-    };
+      
+      return {
+        success: true,
+        message: 'Player stands',
+        hand: {
+          ...hand,
+          status: 'stand'
+        },
+        lastPlayer
+      };
+    } catch (error) {
+      console.error(`[stand] Error standing hand:`, error);
+      throw createError({
+        statusCode: 500,
+        message: `Error standing hand: ${error.message}`
+      });
+    }
   }
 });
